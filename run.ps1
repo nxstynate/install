@@ -7,7 +7,6 @@ param (
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RunsDir = Join-Path $ScriptDir "runs"
 
-# Entry point
 function Main {
     Validate-Environment
     Log-RunInfo
@@ -15,7 +14,6 @@ function Main {
     Run-Scripts -Scripts $scripts -Grep $Grep -DryRun:$DryRun
 }
 
-# Ensure DEV_ENV is defined
 function Validate-Environment {
     if (-not $env:DEV_ENV) {
         Write-Host "ERROR: Environment variable DEV_ENV is required."
@@ -23,24 +21,25 @@ function Validate-Environment {
     }
 }
 
-# Output environment and grep info
-function Log-RunInfo {
-    Log "RUN: env: $($env:DEV_ENV) -- grep: '$Grep'"
+function Log {
+    param ($msg)
+    if ($DryRun) {
+        Write-Host "[DRY_RUN]: $msg"
+    } else {
+        Write-Host $msg
+    }
 }
 
-# Find all .ps1 scripts in the runs folder
+function Log-RunInfo {
+    Log "RUN: env: $($env:DEV_ENV) -- grep: '$Grep'"
+    Log "Looking in: $RunsDir"
+}
+
 function Get-Scripts {
     param ([string]$Directory)
-
-    if (-not (Test-Path $Directory)) {
-        Write-Host "ERROR: '$Directory' does not exist."
-        exit 1
-    }
-
     return Get-ChildItem -Path $Directory -Filter "*.ps1" -File
 }
 
-# Filter and run scripts
 function Run-Scripts {
     param (
         [array]$Scripts,
@@ -55,27 +54,15 @@ function Run-Scripts {
         }
 
         Log "Running script: $($script.FullName)"
-
         if (-not $DryRun) {
             try {
                 & $script.FullName
             } catch {
-                Write-Host "ERROR while running $($script.Name): $_"
+                Write-Host "❌ ERROR while running $($script.Name): $_"
             }
         }
     }
 }
 
-# Logging helper
-function Log {
-    param ([string]$Message)
-
-    if ($DryRun) {
-        Write-Host "[DRY_RUN]: $Message"
-    } else {
-        Write-Host $Message
-    }
-}
-
-# Run it
+# Call main entry point
 Main
